@@ -396,7 +396,7 @@ class LogPosterior(LogPDF):
         :class:`LogPrior` implement the optional method
         :meth:`LogPDF.evaluateS1()`!*
         """
-        #TODO: Is there an optimisation to be made here?
+        # TODO: Is there an optimisation to be made here?
         a, da = self._log_prior.evaluateS1(x)
         b, db = self._log_likelihood.evaluateS1(x)
         return a + b, da + db

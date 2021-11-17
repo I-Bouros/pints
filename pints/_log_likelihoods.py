@@ -889,6 +889,78 @@ class MultiplicativeGaussianLogLikelihood(pints.ProblemLogLikelihood):
         return log_likelihood
 
 
+class NegBinomialLogLikelihood(pints.ProblemLogLikelihood):
+    r"""
+    Calculates a log-likelihood assuming independent negative binomial
+    distributed noise at each time point, and adds two parameters: the
+    mean (``mu``) and the inverse of dispersion (``psi``).
+
+    For a noise characterised by ``mu`` and ``psi``, the log-likelihood
+    is of the form:
+
+    .. math::
+        \log{L(\mu, \psi)} =
+              N \psi \log (\frac{\psi}{\psi + \mu})
+              + \log (\frac{\psi}{\psi + \mu}) \sum_{i=1}^N x_i
+              + \sum_{i=1}^N \log((x_i + \psi - 1) \choose x_i)
+
+    Extends :class:`ProblemLogLikelihood`.
+
+    Parameters
+    ----------
+    problem
+        A :class:`SingleOutputProblem` or :class:`MultiOutputProblem`. For a
+        single-output problem two parameters are added (:math:`\eta`,
+        :math:`\sigma`), where ``mu`` is the mean and ``psi`` is the inverse
+        of dispersion,for a multi-output problem 2 times :math:`n_outputs`
+        parameters are added.
+
+    """
+
+    def __init__(self, problem):
+        super(NegBinomialLogLikelihood, self).__init__(problem)
+
+        # Get number of times, number of outputs
+        self._nt = len(self._times)
+        self._no = problem.n_outputs()
+
+        # Add parameters to problem (one for each output)
+        self._n_parameters = problem.n_parameters() + self._no
+
+    def _my_comb_func(y, psi):
+        return np.log(scipy.special.comb(y+psi-1, y))
+
+    def __call__(self, x):
+        # For multiparameter problems the parameters are stored as
+        # (mu_1, mu_2, ..., mu_k,
+        # psi_1, psi_2,...)
+        m = self._no
+
+        # Observed values (n_times, n_output)
+        observed_values = x[:-self._np]
+
+        # Distribution parameters
+        sigma = np.asarray(x[-m:])
+        if any(sigma <= 0):
+            return -np.inf
+
+        # problem parameters
+        problem_parameters = x[:-m]
+        mu = np.asarray(problem_parameters[0::2])
+        psi = np.asarray(problem_parameters[1::2])
+
+        p1 = np.log(np.divide(mu, np.sum(psi, mu)))
+        p2 = np.log(np.divide(psi, np.sum(psi, mu)))
+
+        log_comb = np.apply_along_axis(
+            self._my_comb_func, 0, observed_values, psi)
+
+        # Calculate
+        return np.sum(
+            log_comb + np.multiply(psi, p2)
+            + np.multiply(observed_values, p1), axis=0)
+
+
 class ScaledLogLikelihood(pints.ProblemLogLikelihood):
     """
     Calculates a log-likelihood based on a (conditional)

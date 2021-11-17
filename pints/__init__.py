@@ -120,6 +120,7 @@ from ._log_likelihoods import (
     GaussianLogLikelihood,
     KnownNoiseLogLikelihood,
     MultiplicativeGaussianLogLikelihood,
+    NegBinomialLogLikelihood,
     ScaledLogLikelihood,
     StudentTLogLikelihood,
     UnknownNoiseLogLikelihood,
